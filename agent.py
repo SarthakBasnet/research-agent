@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from google import genai
-from tools import calculator, web_search
+from tools import calculator, web_search, fetch_page
 
 load_dotenv()
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
@@ -36,6 +36,21 @@ web_search_tool = {
     }
 }
 
+fetch_page_tool = {
+    "name": "fetch_page",
+    "description": "Fetches and returns the text content of a specific web page URL.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "The full URL of the page to fetch, e.g. 'https://example.com/article'"
+            }
+        },
+        "required": ["url"]
+    }
+}
+
 question = "Who won the 2026 FIFA World Cup, and who scored the winning goal?"
 
 messages = [
@@ -44,10 +59,10 @@ messages = [
 
 while True:
     response = client.models.generate_content(
-        model="gemini-flash-latest",
+        model="gemini-flash-lite-latest",
         contents=messages,
         config={
-            "tools": [{"function_declarations": [calculator_tool, web_search_tool]}]
+            "tools": [{"function_declarations": [calculator_tool, web_search_tool, fetch_page_tool]}]
         }
     )
 
@@ -62,6 +77,8 @@ while True:
             result = calculator(tool_args["expression"])
         elif tool_name == "web_search":
             result = web_search(tool_args["query"])
+        elif tool_name == "fetch_page":
+            result = fetch_page(tool_args["url"])
         else:
             result = "Error: unknown tool"
 
