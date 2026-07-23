@@ -51,7 +51,7 @@ fetch_page_tool = {
     }
 }
 
-question = "Who won the 2026 FIFA World Cup, and who scored the winning goal?"
+question = "Summarize the main topic of this page: https://en.wikipedia.org/wiki/Artificial_intelligence"
 
 messages = [
     {"role": "user", "parts": [{"text": question}]}
