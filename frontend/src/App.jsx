@@ -7,6 +7,7 @@ function App() {
   const [loading, setLoading] = useState(false)
 
   async function handleAsk() {
+    if (!question.trim()) return
     setLoading(true)
     setSteps([])
 
@@ -21,33 +22,41 @@ function App() {
     setLoading(false)
   }
 
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') handleAsk()
+  }
+
   return (
     <div className="app">
       <h1>Research Agent</h1>
+      <p className="subtitle">An agentic AI that plans, searches, calculates, and reasons step by step.</p>
 
-      <input
-        type="text"
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        placeholder="Ask something..."
-      />
-      <button onClick={handleAsk} disabled={loading}>
-        {loading ? 'Thinking...' : 'Ask'}
-      </button>
+      <div className="input-row">
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask something..."
+        />
+        <button onClick={handleAsk} disabled={loading}>
+          {loading ? 'Thinking...' : 'Ask'}
+        </button>
+      </div>
 
       <div className="trace">
         {steps.map((step, i) => (
           <div key={i} className={`step ${step.type}`}>
             {step.type === 'tool_call' ? (
               <>
-                <strong>Tool:</strong> {step.tool}<br />
-                <strong>Input:</strong> {JSON.stringify(step.args)}<br />
-                <strong>Result:</strong> {step.result}
+                <span className="tool-name">{step.tool}</span><br />
+                <strong>Input:</strong> {JSON.stringify(step.args)}
+                <div className="result">{step.result}</div>
               </>
             ) : (
               <>
-                <strong>Final Answer:</strong><br />
-                {step.text}
+                <span className="label">FINAL ANSWER</span>
+                <div>{step.text}</div>
               </>
             )}
           </div>
