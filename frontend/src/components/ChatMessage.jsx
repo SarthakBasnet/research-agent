@@ -1,4 +1,6 @@
 import { useState } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Button } from "@/components/ui/button"
 import ResearchProcessDialog from "./ResearchProcessDialog"
 
@@ -12,13 +14,16 @@ function ChatMessage({ question, answer, steps }) {
         {question}
       </div>
 
-      <div className="self-start bg-gray-800 text-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[80%]">
-        <div>{answer}</div>
+      <div className="self-start flex flex-col items-start gap-2 max-w-[80%]">
+        <div className="bg-gray-800 text-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 prose prose-invert prose-sm max-w-none">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown>
+        </div>
+
         {toolCallCount > 0 && (
           <Button
             variant="ghost"
             size="sm"
-            className="mt-2 text-xs text-gray-400 hover:text-white px-0"
+            className="text-xs text-gray-400 hover:text-white hover:bg-gray-800 px-2 whitespace-nowrap"
             onClick={() => setOpen(true)}
           >
             View Research Process ({toolCallCount} step{toolCallCount > 1 ? "s" : ""})

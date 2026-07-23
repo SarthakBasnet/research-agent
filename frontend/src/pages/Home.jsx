@@ -16,6 +16,27 @@ function Home() {
     setQuestion("")
     setLoading(true)
 
+    const liveSteps = []
+    let liveAnswer = "Thinking..."
+
+    setConversation((prev) => [
+      ...prev,
+      { question: currentQuestion, answer: liveAnswer, steps: liveSteps, live: true },
+    ])
+
+    function updateLiveTurn() {
+      setConversation((prev) => {
+        const updated = [...prev]
+        updated[updated.length - 1] = {
+          question: currentQuestion,
+          answer: liveAnswer,
+          steps: [...liveSteps],
+          live: true,
+        }
+        return updated
+      })
+    }
+
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/ask`, {
         method: "POST",
@@ -23,26 +44,35 @@ function Home() {
         body: JSON.stringify({ question: currentQuestion }),
       })
 
-      const steps = await response.json()
-      const finalStep = steps.find((s) => s.type === "final_answer")
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
 
-      setConversation((prev) => [
-        ...prev,
-        {
-          question: currentQuestion,
-          answer: finalStep ? finalStep.text : "Something went wrong.",
-          steps,
-        },
-      ])
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop()
+
+        for (const line of lines) {
+          if (!line.trim()) continue
+          const step = JSON.parse(line)
+
+          if (step.type === "tool_call") {
+            liveSteps.push(step)
+            liveAnswer = `Using ${step.tool}...`
+          } else if (step.type === "final_answer") {
+            liveAnswer = step.text
+          }
+
+          updateLiveTurn()
+        }
+      }
     } catch (err) {
-      setConversation((prev) => [
-        ...prev,
-        {
-          question: currentQuestion,
-          answer: "Error: could not reach the server. Is the backend running?",
-          steps: [],
-        },
-      ])
+      liveAnswer = "Error: could not reach the server. Is the backend running?"
+      updateLiveTurn()
     } finally {
       setLoading(false)
     }
@@ -65,11 +95,6 @@ function Home() {
         {conversation.map((turn, i) => (
           <ChatMessage key={i} {...turn} />
         ))}
-        {loading && (
-          <div className="self-start bg-gray-800 text-gray-400 rounded-2xl rounded-bl-sm px-4 py-3 text-sm animate-pulse">
-            Thinking...
-          </div>
-        )}
       </main>
 
       <footer className="border-t border-gray-800 px-6 py-4">
