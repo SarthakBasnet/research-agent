@@ -1,7 +1,20 @@
 import os
+import json
 from dotenv import load_dotenv
 from google import genai
 from tools import calculator, web_search, fetch_page
+
+import socket
+
+_original_getaddrinfo = socket.getaddrinfo
+
+def _ipv4_only_getaddrinfo(*args, **kwargs):
+    return [
+        info for info in _original_getaddrinfo(*args, **kwargs)
+        if info[0] == socket.AF_INET
+    ]
+
+socket.getaddrinfo = _ipv4_only_getaddrinfo
 
 load_dotenv()
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
@@ -53,8 +66,6 @@ fetch_page_tool = {
 
 
 def run_agent(question):
-    steps = []
-
     messages = [
         {"role": "user", "parts": [{"text": question}]}
     ]
@@ -76,19 +87,23 @@ def run_agent(question):
 
             if tool_name == "calculator":
                 result = calculator(tool_args["expression"])
+                result_for_gemini = result
             elif tool_name == "web_search":
                 result = web_search(tool_args["query"])
+                result_for_gemini = json.dumps(result)
             elif tool_name == "fetch_page":
                 result = fetch_page(tool_args["url"])
+                result_for_gemini = result
             else:
                 result = "Error: unknown tool"
+                result_for_gemini = result
 
-            steps.append({
+            yield {
                 "type": "tool_call",
                 "tool": tool_name,
                 "args": dict(tool_args),
                 "result": result
-            })
+            }
 
             messages.append({"role": "model", "parts": [part]})
             messages.append({
@@ -96,14 +111,14 @@ def run_agent(question):
                 "parts": [{
                     "function_response": {
                         "name": tool_name,
-                        "response": {"result": result}
+                        "response": {"result": result_for_gemini}
                     }
                 }]
             })
 
         else:
-            steps.append({
+            yield {
                 "type": "final_answer",
                 "text": response.text
-            })
-            return steps
+            }
+            return
